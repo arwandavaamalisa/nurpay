@@ -45,8 +45,7 @@ export default async function handler(req) {
     const data = await response.json();
 
     // Convert Gemini response to Anthropic-like format so frontend works without changes
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Maaf, tidak ada respons.';
-    const result = {
+const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || data?.error?.message || JSON.stringify(data);    const result = {
       content: [{ type: 'text', text: text }]
     };
 
