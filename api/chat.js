@@ -12,40 +12,35 @@ export default async function handler(req) {
 
   try {
     const body = await req.json();
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
 
-    // Build Gemini contents from messages
-    const systemPrompt = body.system || '';
-    const messages = body.messages || [];
+    const messages = [];
+    if (body.system) {
+      messages.push({ role: 'system', content: body.system });
+    }
+    (body.messages || []).forEach(m => messages.push(m));
 
-    // Combine system + messages into Gemini format
-    const contents = messages.map(m => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }]
-    }));
-
-    const geminiBody = {
-      system_instruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
-      contents: contents,
-      generationConfig: {
-        maxOutputTokens: body.max_tokens || 1000,
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: messages,
+        max_tokens: body.max_tokens || 1000,
         temperature: 0.7,
-      }
-    };
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(geminiBody),
-      }
-    );
+      }),
+    });
 
     const data = await response.json();
 
-    // Convert Gemini response to Anthropic-like format so frontend works without changes
-const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || data?.error?.message || JSON.stringify(data);    const result = {
+    const text = data?.choices?.[0]?.message?.content
+      || data?.error?.message
+      || JSON.stringify(data);
+
+    const result = {
       content: [{ type: 'text', text: text }]
     };
 
